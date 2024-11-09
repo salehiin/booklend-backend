@@ -59,6 +59,14 @@ async function run() {
 
     const bookCollection = client.db('booklend').collection('books');
     const borrowingCollection = client.db('booklend').collection('borrowings');
+    const userCollection = client.db('booklend').collection('users');
+
+    // users related api
+    app.post('/users', async (req, res) =>{
+      const user = req.body;
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    })
 
     // auth related api
     app.post('/jwt', logger, async(req, res) =>{
