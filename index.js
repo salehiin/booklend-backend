@@ -9,7 +9,11 @@ const port = process.env.PORT || 5000;
 
 // middleware
 app.use(cors({
-  origin: ['http://localhost:5173'],
+  origin: [
+    "http://localhost:5173",
+    "https://booklend-f0605.web.app", 
+    "https://booklend-f0605.firebaseapp.com"
+  ],
   credentials: true
 }));
 app.use(express.json());
@@ -50,12 +54,20 @@ const verifyToken = async(req, res, next) =>{
     // console.log('value in the token', decoded)
     req.user = decoded;
     next();
-  })
-}
+  });
+};
+
+const cookieOption = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+  // maxAge
+  sameSite: process.env.NODE_ENV === 'production' ? true : false,
+};
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect(); // cancel for vercel
 
     const bookCollection = client.db('booklend').collection('books');
     const borrowingCollection = client.db('booklend').collection('borrowings');
@@ -64,6 +76,12 @@ async function run() {
     // users related api
     app.post('/users', async (req, res) =>{
       const user = req.body;
+      // insert email if user doesn't exist
+      const query = {email: user.email}
+      const existingUser = await userCollection.findOne(query);
+      if(existingUser){
+        return res.send({message: 'User already exists', insertedId: null})
+      }
       const result = await userCollection.insertOne(user);
       res.send(result);
     })
@@ -75,12 +93,7 @@ async function run() {
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1h'})
 
       res
-      .cookie('token', token, {
-        httpOnly: true,
-        secure: false,
-        // maxAge
-        // sameSite: 'none'
-      })
+      .cookie('token', token, cookieOption) // 05:55
       .send({success: true})
     })
 
@@ -167,7 +180,7 @@ async function run() {
 
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 }); // cancel for vercel
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
